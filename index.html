@@ -1,0 +1,105 @@
+```html
+<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IoT Aquarium Dashboard</title>
+
+  <!-- MQTT + Chart -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/mqttws31.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body{background:#0f1724;color:#fff;font-family:sans-serif}
+    .container{max-width:1000px;margin:auto;padding:20px}
+    .card{background:#111;padding:15px;border-radius:10px;margin-bottom:10px}
+    .value{font-size:28px}
+    .btn{padding:10px;margin:5px;border:none;border-radius:6px;cursor:pointer}
+  </style>
+</head>
+
+<body>
+<div class="container">
+
+<h2>🐟 Aquarium Dashboard</h2>
+
+<div class="card">
+  <div>pH: <span id="phValue">--</span></div>
+  <div>Temp: <span id="tempValue">--</span></div>
+  <div>Level: <span id="waterLevelValue">--</span></div>
+</div>
+
+<div class="card">
+  <button class="btn" onclick="send('control/water_out','START')">Water OUT</button>
+  <button class="btn" onclick="send('control/water_in','START')">Water IN</button>
+  <button class="btn" onclick="send('control/light','TOGGLE')">Light</button>
+  <button class="btn" onclick="send('control/feeder','FEED_NOW')">Feed</button>
+</div>
+
+<div class="card">
+  MQTT: <span id="status">Disconnected</span>
+</div>
+
+</div>
+
+<script>
+
+// ✅ MQTT тохиргоо (зассан)
+const MQTT_BROKER = "broker.hivemq.com";
+const MQTT_PORT = 8884;
+const CLIENT_ID = "web-" + Math.random();
+
+let client;
+
+// connect
+function connectMQTT(){
+  client = new Paho.MQTT.Client(MQTT_BROKER, MQTT_PORT, CLIENT_ID);
+
+  client.onConnectionLost = () => {
+    document.getElementById("status").innerText = "Disconnected";
+  };
+
+  client.onMessageArrived = (msg)=>{
+    const t = msg.destinationName;
+    const p = msg.payloadString;
+
+    if(t==="sensors/ph"){
+      document.getElementById("phValue").innerText = p;
+    }
+    if(t==="sensors/temperature"){
+      document.getElementById("tempValue").innerText = p;
+    }
+    if(t==="sensors/water_level"){
+      document.getElementById("waterLevelValue").innerText = p;
+    }
+  };
+
+  client.connect({
+    useSSL:true,
+    onSuccess: ()=>{
+      document.getElementById("status").innerText = "Connected";
+
+      client.subscribe("sensors/ph");
+      client.subscribe("sensors/temperature");
+      client.subscribe("sensors/water_level");
+    }
+  });
+}
+
+// send command
+function send(topic,msg){
+  if(!client) return;
+  let m = new Paho.MQTT.Message(msg);
+  m.destinationName = topic;
+  client.send(m);
+}
+
+// start
+connectMQTT();
+
+</script>
+
+</body>
+</html>
+```
